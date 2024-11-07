@@ -1,12 +1,15 @@
-use std::{fmt, io::stdin};
+use std::{fmt, io::stdin, ops::{Add, Sub}};
 
 const WIDTH: usize = 8;
 const HEIGHT: usize = 8;
 
 struct ChessBoard {
     grid: [[ChessCell; WIDTH]; HEIGHT],
+    turn: ChessColor,
+    move_stack: Vec<ChessMove>,
 }
 
+#[derive(Clone, Copy)]
 enum ChessColor {
     WHITE,
     BLACK,
@@ -35,6 +38,24 @@ enum PieceType {
 }
 use PieceType::*;
 
+struct ChessVec {
+    row: usize,
+    col: usize,
+}
+
+struct ChessMove {
+    from: ChessVec,
+    to: ChessVec,
+    taken_piece: Option<ChessPiece>,
+    move_type: MoveType,
+}
+
+enum MoveType {
+    Normal,
+    CastelingWith(ChessVec),
+    PromotingTo(PieceType),
+}
+
 impl ChessBoard {
     const fn new() -> Self {
         let mut grid = [const { [const { ChessCell::Empty }; WIDTH] }; HEIGHT];
@@ -59,7 +80,19 @@ impl ChessBoard {
         grid[0][6] = Filled(ChessPiece::new(KNIGHT, WHITE));
         grid[0][7] = Filled(ChessPiece::new(ROOK, WHITE));
 
-        Self { grid }
+        Self {
+            grid,
+            turn: ChessColor::WHITE,
+            move_stack: Vec::new(),
+        }
+    }
+
+    fn move_piece(from: ChessVec, to: ChessVec) -> Result<(), &'static str> {
+        todo!()
+    }
+
+    fn undo_move() {
+        todo!()
     }
 }
 
@@ -110,6 +143,53 @@ impl fmt::Display for ChessPiece {
             }
             .unwrap()
         )
+    }
+}
+
+impl ChessVec {
+    const fn new(row: usize, col: usize) -> Self {
+        Self { row, col }
+    }
+}
+
+impl TryFrom<&str> for ChessVec {
+    type Error = &'static str;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        const ROWS: &'static str = "12345678";
+        const COLS: &'static str = "abcdefgh";
+
+        let Some(row) = value.chars().find_map(|c| ROWS.find(c)) else {
+            return Err("[Warning]: no row number was found");
+        };
+
+        let Some(col) = value.chars().find_map(|c| COLS.find(c)) else {
+            return Err("[Warning]: no column character was found");
+        };
+
+        Ok(Self { row, col })
+    }
+}
+
+impl Add for ChessVec {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            row: self.row + rhs.row,
+            col: self.col + rhs.col,
+        }
+    }
+}
+
+impl Sub for ChessVec {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            row: self.row - rhs.row,
+            col: self.col - rhs.col,
+        }
     }
 }
 
