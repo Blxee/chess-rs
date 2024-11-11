@@ -1,30 +1,29 @@
-use std::{fmt, io::stdin, ops::{Add, Sub}};
+use std::{
+    fmt,
+    mem::{self, replace},
+    ops::{Add, Index, IndexMut, Sub},
+};
 
 const WIDTH: usize = 8;
 const HEIGHT: usize = 8;
 
 struct ChessBoard {
-    grid: [[ChessCell; WIDTH]; HEIGHT],
+    grid: [[Option<ChessPiece>; WIDTH]; HEIGHT],
     turn: ChessColor,
     move_stack: Vec<ChessMove>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum ChessColor {
     WHITE,
     BLACK,
 }
 use ChessColor::*;
 
-enum ChessCell {
-    Empty,
-    Filled(ChessPiece),
-}
-use ChessCell::*;
-
 struct ChessPiece {
     piece_type: PieceType,
     color: ChessColor,
+    total_moves: u32,
 }
 
 #[derive(Clone, Copy)]
@@ -38,6 +37,7 @@ enum PieceType {
 }
 use PieceType::*;
 
+#[derive(Clone, Copy)]
 struct ChessVec {
     row: usize,
     col: usize,
@@ -58,27 +58,27 @@ enum MoveType {
 
 impl ChessBoard {
     const fn new() -> Self {
-        let mut grid = [const { [const { ChessCell::Empty }; WIDTH] }; HEIGHT];
+        let mut grid = [const { [const { None }; WIDTH] }; HEIGHT];
 
-        grid[7][0] = Filled(ChessPiece::new(ROOK, BLACK));
-        grid[7][1] = Filled(ChessPiece::new(KNIGHT, BLACK));
-        grid[7][2] = Filled(ChessPiece::new(BISHOP, BLACK));
-        grid[7][3] = Filled(ChessPiece::new(QUEEN, BLACK));
-        grid[7][4] = Filled(ChessPiece::new(KING, BLACK));
-        grid[7][5] = Filled(ChessPiece::new(BISHOP, BLACK));
-        grid[7][6] = Filled(ChessPiece::new(KNIGHT, BLACK));
-        grid[7][7] = Filled(ChessPiece::new(ROOK, BLACK));
-        grid[6] = [const { Filled(ChessPiece::new(PAWN, BLACK)) }; 8];
+        grid[7][0] = Some(ChessPiece::new(ROOK, BLACK));
+        grid[7][1] = Some(ChessPiece::new(KNIGHT, BLACK));
+        grid[7][2] = Some(ChessPiece::new(BISHOP, BLACK));
+        grid[7][3] = Some(ChessPiece::new(QUEEN, BLACK));
+        grid[7][4] = Some(ChessPiece::new(KING, BLACK));
+        grid[7][5] = Some(ChessPiece::new(BISHOP, BLACK));
+        grid[7][6] = Some(ChessPiece::new(KNIGHT, BLACK));
+        grid[7][7] = Some(ChessPiece::new(ROOK, BLACK));
+        grid[6] = [const { Some(ChessPiece::new(PAWN, BLACK)) }; 8];
 
-        grid[1] = [const { Filled(ChessPiece::new(PAWN, WHITE)) }; 8];
-        grid[0][0] = Filled(ChessPiece::new(ROOK, WHITE));
-        grid[0][1] = Filled(ChessPiece::new(KNIGHT, WHITE));
-        grid[0][2] = Filled(ChessPiece::new(BISHOP, WHITE));
-        grid[0][3] = Filled(ChessPiece::new(QUEEN, WHITE));
-        grid[0][4] = Filled(ChessPiece::new(KING, WHITE));
-        grid[0][5] = Filled(ChessPiece::new(BISHOP, WHITE));
-        grid[0][6] = Filled(ChessPiece::new(KNIGHT, WHITE));
-        grid[0][7] = Filled(ChessPiece::new(ROOK, WHITE));
+        grid[1] = [const { Some(ChessPiece::new(PAWN, WHITE)) }; 8];
+        grid[0][0] = Some(ChessPiece::new(ROOK, WHITE));
+        grid[0][1] = Some(ChessPiece::new(KNIGHT, WHITE));
+        grid[0][2] = Some(ChessPiece::new(BISHOP, WHITE));
+        grid[0][3] = Some(ChessPiece::new(QUEEN, WHITE));
+        grid[0][4] = Some(ChessPiece::new(KING, WHITE));
+        grid[0][5] = Some(ChessPiece::new(BISHOP, WHITE));
+        grid[0][6] = Some(ChessPiece::new(KNIGHT, WHITE));
+        grid[0][7] = Some(ChessPiece::new(ROOK, WHITE));
 
         Self {
             grid,
@@ -87,11 +87,36 @@ impl ChessBoard {
         }
     }
 
-    fn move_piece(from: ChessVec, to: ChessVec) -> Result<(), &'static str> {
-        todo!()
+    fn move_piece(&mut self, from: ChessVec, to: ChessVec) -> Result<(), &'static str> {
+        match &self[from] {
+            Some(piece) if piece.color != self.turn => {
+                return Err("[Error]: this is not your piece to move");
+            }
+            None => return Err("[Error]: there is no piece to move"),
+            _ => (),
+        }
+        let mut piece = self[from].take().unwrap();
+
+        piece.total_moves += 1;
+
+        let taken_piece = mem::replace(&mut self[to], Some(piece));
+
+        self.move_stack.push(ChessMove {
+            from,
+            to,
+            taken_piece,
+            move_type: MoveType::Normal,
+        });
+
+        self.turn = match self.turn {
+            WHITE => BLACK,
+            BLACK => WHITE,
+        };
+
+        Ok(())
     }
 
-    fn undo_move() {
+    fn undo_move(&mut self) {
         todo!()
     }
 }
@@ -104,7 +129,7 @@ impl fmt::Display for ChessBoard {
         for (i, row) in self.grid.iter().rev().enumerate() {
             write!(f, "{} ", (HEIGHT - i))?;
             for cell in row {
-                write!(f, "|{cell}")?;
+                write!(f, "|{}", cell.as_ref().map_or(" ".to_string(), ChessPiece::to_string))?;
             }
             writeln!(f, "| {}", (HEIGHT - i))?;
         }
@@ -114,18 +139,27 @@ impl fmt::Display for ChessBoard {
     }
 }
 
-impl fmt::Display for ChessCell {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Empty => write!(f, " "),
-            Self::Filled(piece) => write!(f, "{piece}"),
-        }
+impl Index<ChessVec> for ChessBoard {
+    type Output = Option<ChessPiece>;
+
+    fn index(&self, ChessVec { row, col }: ChessVec) -> &Self::Output {
+        &self.grid[row][col]
+    }
+}
+
+impl IndexMut<ChessVec> for ChessBoard {
+    fn index_mut(&mut self, ChessVec { row, col }: ChessVec) -> &mut Self::Output {
+        &mut self.grid[row][col]
     }
 }
 
 impl ChessPiece {
     const fn new(piece_type: PieceType, color: ChessColor) -> Self {
-        Self { piece_type, color }
+        Self {
+            piece_type,
+            color,
+            total_moves: 0,
+        }
     }
 }
 
@@ -146,8 +180,14 @@ impl fmt::Display for ChessPiece {
     }
 }
 
+macro_rules! cvec {
+    ($col:expr, $row:expr) => {
+        ChessVec::new($col, $row)
+    };
+}
+
 impl ChessVec {
-    const fn new(row: usize, col: usize) -> Self {
+    const fn new(col: usize, row: usize) -> Self {
         Self { row, col }
     }
 }
@@ -196,7 +236,8 @@ impl Sub for ChessVec {
 fn main() {
     println!("Hello, world!");
 
-    let board = ChessBoard::new();
+    let mut board = ChessBoard::new();
 
+    board.move_piece(cvec!(0, 0), cvec!(3, 3)).unwrap();
     println!("{board}");
 }
