@@ -52,9 +52,11 @@ struct ChessMove {
 
 enum MoveType {
     Normal,
-    CastelingWith(ChessVec),
-    PromotingTo(PieceType),
+    EnPassant(ChessVec),
+    Casteling(Box<ChessMove>),
+    Promoting(PieceType),
 }
+use MoveType::*;
 
 impl ChessBoard {
     const fn new() -> Self {
@@ -87,7 +89,7 @@ impl ChessBoard {
         }
     }
 
-    fn move_piece(&mut self, from: ChessVec, to: ChessVec) -> Result<(), &'static str> {
+    fn move_piece(&mut self, from: ChessVec, to: ChessVec) -> Result<(), &str> {
         match &self[from] {
             Some(piece) if piece.color != self.turn => {
                 return Err("[Error]: this is not your piece to move");
@@ -116,8 +118,30 @@ impl ChessBoard {
         Ok(())
     }
 
-    fn undo_move(&mut self) {
-        todo!()
+    fn undo_move(&mut self) -> Result<(), &str> {
+        let Some(ChessMove {
+            from,
+            to,
+            taken_piece,
+            move_type,
+        }) = self.move_stack.pop()
+        else {
+            return Err("[Error]: move stack is empty");
+        };
+
+        let mut piece = self[to].take();
+        piece.as_mut().map(|piece| piece.total_moves -= 1);
+        self[from] = piece;
+
+        match move_type {
+            Normal => {
+                self[to] = taken_piece;
+            },
+            EnPassant(target) => todo!(),
+            Casteling(rook_move) => todo!(),
+            Promoting(to_type) => todo!(),
+        }
+        Ok(())
     }
 }
 
@@ -129,7 +153,11 @@ impl fmt::Display for ChessBoard {
         for (i, row) in self.grid.iter().rev().enumerate() {
             write!(f, "{} ", (HEIGHT - i))?;
             for cell in row {
-                write!(f, "|{}", cell.as_ref().map_or(" ".to_string(), ChessPiece::to_string))?;
+                write!(
+                    f,
+                    "|{}",
+                    cell.as_ref().map_or(" ".to_string(), ChessPiece::to_string)
+                )?;
             }
             writeln!(f, "| {}", (HEIGHT - i))?;
         }
@@ -239,5 +267,6 @@ fn main() {
     let mut board = ChessBoard::new();
 
     board.move_piece(cvec!(0, 0), cvec!(3, 3)).unwrap();
+    board.undo_move();
     println!("{board}");
 }
