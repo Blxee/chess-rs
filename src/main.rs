@@ -4,7 +4,7 @@ use std::{
     process::exit,
 };
 
-use crate::chess::{ChessBoard, ChessVec};
+use chess::{ChessBoard, ChessVec};
 
 enum ChessInput {
     Move(ChessVec, ChessVec),

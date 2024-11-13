@@ -1,15 +1,15 @@
+use crate::cvec;
 use std::mem;
 use std::{
     fmt,
-    ops::{Add, Index, IndexMut, Sub},
+    ops::{Index, IndexMut},
 };
 
-#[macro_export]
-macro_rules! cvec {
-    ($col:expr, $row:expr) => {
-        ChessVec::new($col, $row)
-    };
-}
+mod chess_vec;
+mod chess_piece;
+
+pub use chess_vec::*;
+use chess_piece::*;
 
 const WIDTH: usize = 8;
 const HEIGHT: usize = 8;
@@ -28,29 +28,6 @@ pub enum ChessColor {
     BLACK = 1,
 }
 use ChessColor::*;
-
-pub struct ChessPiece {
-    piece_type: PieceType,
-    color: ChessColor,
-    total_moves: u32,
-}
-
-#[derive(Clone, Copy)]
-enum PieceType {
-    KING,
-    QUEEN,
-    BISHOP,
-    KNIGHT,
-    ROOK,
-    PAWN,
-}
-use PieceType::*;
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct ChessVec {
-    row: i32,
-    col: i32,
-}
 
 struct ChessMove {
     from: ChessVec,
@@ -245,126 +222,5 @@ impl Index<ChessVec> for ChessBoard {
 impl IndexMut<ChessVec> for ChessBoard {
     fn index_mut(&mut self, ChessVec { row, col }: ChessVec) -> &mut Self::Output {
         &mut self.grid[row as usize][col as usize]
-    }
-}
-
-impl ChessPiece {
-    const fn new(piece_type: PieceType, color: ChessColor) -> Self {
-        Self {
-            piece_type,
-            color,
-            total_moves: 0,
-        }
-    }
-
-    fn is_move_valid(&self, board: &ChessBoard, from: ChessVec, to: ChessVec) -> bool {
-        match self.piece_type {
-            KING => self.is_king_move_valid(board, from, to),
-            QUEEN => self.is_queen_move_valid(board, from, to),
-            BISHOP => self.is_bishop_move_valid(board, from, to),
-            KNIGHT => self.is_knight_move_valid(board, from, to),
-            ROOK => self.is_rook_move_valid(board, from, to),
-            PAWN => self.is_pawn_move_valid(board, from, to),
-        }
-    }
-
-    fn is_king_move_valid(&self, board: &ChessBoard, from: ChessVec, to: ChessVec) -> bool {
-        let diff = (from - to).abs();
-        if diff.row > 1 || diff.col > 1 {
-            return false;
-        }
-        true
-    }
-
-    fn is_queen_move_valid(&self, board: &ChessBoard, from: ChessVec, to: ChessVec) -> bool {
-        todo!()
-    }
-
-    fn is_bishop_move_valid(&self, board: &ChessBoard, from: ChessVec, to: ChessVec) -> bool {
-        todo!()
-    }
-
-    fn is_knight_move_valid(&self, board: &ChessBoard, from: ChessVec, to: ChessVec) -> bool {
-        todo!()
-    }
-
-    fn is_rook_move_valid(&self, board: &ChessBoard, from: ChessVec, to: ChessVec) -> bool {
-        todo!()
-    }
-
-    fn is_pawn_move_valid(&self, board: &ChessBoard, from: ChessVec, to: ChessVec) -> bool {
-        todo!()
-    }
-}
-
-impl fmt::Display for ChessPiece {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        const WHITE_PIECE_REPR: &str = "KQBHRP";
-        const BLACK_PIECE_REPR: &str = "kqbhrp";
-
-        write!(
-            f,
-            "{}",
-            match self.color {
-                WHITE => WHITE_PIECE_REPR.chars().nth(self.piece_type as usize),
-                BLACK => BLACK_PIECE_REPR.chars().nth(self.piece_type as usize),
-            }
-            .unwrap()
-        )
-    }
-}
-
-impl ChessVec {
-    pub const fn new(col: i32, row: i32) -> Self {
-        Self { row, col }
-    }
-
-    fn abs(mut self) -> Self {
-        self.row = self.row.abs();
-        self.col = self.col.abs();
-        self
-    }
-}
-
-impl TryFrom<&mut String> for ChessVec {
-    type Error = &'static str;
-
-    fn try_from(value: &mut String) -> Result<Self, Self::Error> {
-        const ROWS: &'static str = "12345678";
-        const COLS: &'static str = "abcdefgh";
-
-        let Some(row_idx) = value.chars().position(|c| ROWS.contains(c)) else {
-            return Err("[Warning]: no row number was found");
-        };
-        let row = ROWS.find(value.remove(row_idx)).unwrap();
-
-        let Some(col_idx) = value.chars().position(|c| COLS.contains(c)) else {
-            return Err("[Warning]: no column character was found");
-        };
-        let col = COLS.find(value.remove(col_idx)).unwrap();
-
-        Ok(Self::new(col.try_into().unwrap(), row.try_into().unwrap()))
-    }
-}
-
-impl Add for ChessVec {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            row: self.row + rhs.row,
-            col: self.col + rhs.col,
-        }
-    }
-}
-
-impl Sub for ChessVec {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self {
-            row: self.row - rhs.row,
-            col: self.col - rhs.col,
-        }
     }
 }
