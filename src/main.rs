@@ -1,6 +1,6 @@
 mod chess;
 use std::{
-    io::{stdin, stdout, Stdin, Write},
+    io::{stdin, stdout, Write},
     process::exit,
 };
 
@@ -9,6 +9,7 @@ use crate::chess::{ChessBoard, ChessVec};
 enum ChessInput {
     Move(ChessVec, ChessVec),
     Select(ChessVec),
+    Deselect,
     Undo,
 }
 
@@ -26,11 +27,13 @@ fn get_input() -> ChessInput {
             Err(_) => {
                 if buf.contains(['u', 'U']) {
                     return ChessInput::Undo;
+                } else if buf.contains(['d', 'D']) {
+                    return ChessInput::Deselect;
                 } else if buf.contains(['q', 'Q']) {
                     println!("[Info]: quitting now..");
                     exit(0);
                 } else {
-                    println!("[Error]: no position specified");
+                    eprintln!("[Error]: no position specified");
                     continue;
                 }
             }
@@ -49,12 +52,20 @@ fn main() {
 
     loop {
         println!("{board}");
+
         while let Err(e) = match get_input() {
             ChessInput::Move(from, to) => board.move_piece(from, to),
-            ChessInput::Select(pos) => board.select_piece(pos),
+            ChessInput::Select(pos) => {
+                if board.is_piece_selected() {
+                    board.move_selected(pos)
+                } else {
+                    board.select_piece(pos)
+                }
+            }
+            ChessInput::Deselect => board.deselect_piece(),
             ChessInput::Undo => board.undo_move(),
         } {
-            println!("{e}");
+            eprintln!("{e}");
         }
     }
 }

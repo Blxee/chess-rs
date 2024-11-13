@@ -1,5 +1,7 @@
+use std::mem;
 use std::{
-    error::Error, fmt, mem::{self, replace}, ops::{Add, Index, IndexMut, Sub}, rc::Rc
+    fmt,
+    ops::{Add, Index, IndexMut, Sub},
 };
 
 #[macro_export]
@@ -17,6 +19,7 @@ pub struct ChessBoard {
     turn: ChessColor,
     move_stack: Vec<ChessMove>,
     kings_pos: [ChessVec; 2],
+    selected_pos: Option<ChessVec>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -43,7 +46,7 @@ enum PieceType {
 }
 use PieceType::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct ChessVec {
     row: i32,
     col: i32,
@@ -93,6 +96,7 @@ impl ChessBoard {
             turn: ChessColor::WHITE,
             move_stack: Vec::new(),
             kings_pos: [cvec!(4, 7), cvec!(4, 0)],
+            selected_pos: None,
         }
     }
 
@@ -109,15 +113,37 @@ impl ChessBoard {
     }
 
     pub fn select_piece(&mut self, pos: ChessVec) -> Result<(), &str> {
-        todo!()
+        match &self[pos] {
+            Some(piece) if piece.color != self.turn => {
+                Err("[Warning]: this is not your piece to select")
+            }
+            None => Err("[Warning]: there is no piece to select"),
+            _ => {
+                self.selected_pos = Some(pos);
+                Ok(())
+            }
+        }
+    }
+
+    pub fn is_piece_selected(&self) -> bool {
+        self.selected_pos.is_some()
+    }
+
+    pub fn deselect_piece(&mut self) -> Result<(), &str> {
+        if self.selected_pos.is_none() {
+            Err("[Warning]: no piece was selected")
+        } else {
+            self.selected_pos = None;
+            Ok(())
+        }
     }
 
     pub fn move_piece(&mut self, from: ChessVec, to: ChessVec) -> Result<(), &str> {
         match &self[from] {
             Some(piece) if piece.color != self.turn => {
-                return Err("[Error]: this is not your piece to move");
+                return Err("[Warning]: this is not your piece to move");
             }
-            None => return Err("[Error]: there is no piece to move"),
+            None => return Err("[Warning]: there is no piece to move"),
             _ => (),
         }
         let mut piece = self[from].take().unwrap();
@@ -138,8 +164,16 @@ impl ChessBoard {
         });
 
         self.swap_turn();
+        self.deselect_piece()?;
 
         Ok(())
+    }
+
+    pub fn move_selected(&mut self, to: ChessVec) -> Result<(), &str> {
+        let Some(selected_pos) = self.selected_pos else {
+            return Err("[Warning]: no piece is selected to move");
+        };
+        self.move_piece(selected_pos, to)
     }
 
     pub fn undo_move(&mut self) -> Result<(), &str> {
@@ -150,7 +184,7 @@ impl ChessBoard {
             move_type,
         }) = self.move_stack.pop()
         else {
-            return Err("[Error]: move stack is empty");
+            return Err("[Warning]: move stack is empty");
         };
 
         let mut piece = self[to].take();
@@ -167,6 +201,9 @@ impl ChessBoard {
             Casteling(rook_move) => todo!(),
             Promoting(to_type) => todo!(),
         }
+
+        self.deselect_piece()?;
+
         Ok(())
     }
 }
@@ -176,16 +213,20 @@ impl fmt::Display for ChessBoard {
         writeln!(f, "   a b c d e f g h")?;
         writeln!(f, "  +---------------+")?;
 
-        for (i, row) in self.grid.iter().rev().enumerate() {
-            write!(f, "{} ", (HEIGHT - i))?;
-            for cell in row {
+        for (y, row) in self.grid.iter().rev().enumerate() {
+            write!(f, "{} ", (HEIGHT - y))?;
+            for (x, cell) in row.iter().enumerate() {
+                let is_selected = self
+                    .selected_pos
+                    .map_or(false, |pos| pos == cvec!(x as i32, 7 - y as i32));
                 write!(
                     f,
-                    "|{}",
+                    "{}{}",
+                    if is_selected { '+' } else { '|' },
                     cell.as_ref().map_or(" ".to_string(), ChessPiece::to_string)
                 )?;
             }
-            writeln!(f, "| {}", (HEIGHT - i))?;
+            writeln!(f, "| {}", (HEIGHT - y))?;
         }
 
         writeln!(f, "  +---------------+")?;
