@@ -1,4 +1,5 @@
-use crate::cvec;
+pub use crate::cvec;
+use std::fmt::Write;
 use std::mem;
 use std::{
     fmt,
@@ -75,6 +76,30 @@ impl ChessBoard {
             kings_pos: [cvec!(4, 7), cvec!(4, 0)],
             selected_pos: None,
         }
+    }
+
+    pub fn to_fen(&self) -> String {
+        let mut result = String::new();
+        for row in self.grid.iter().rev() {
+            let spaces = row.iter().fold(0, |mut spaces, i| {
+                match i {
+                    Some(piece) => {
+                        if spaces > 0 {
+                            result.push_str(&spaces.to_string());
+                            spaces = 0;
+                        }
+                        result.push_str(&piece.to_string());
+                    }
+                    None => spaces += 1,
+                }
+                spaces
+            });
+            if spaces > 0 {
+                result.push_str(&spaces.to_string());
+            }
+            result.push('/');
+        }
+        return result;
     }
 
     fn get_king(&self, color: ChessColor) -> (&ChessPiece, ChessVec) {

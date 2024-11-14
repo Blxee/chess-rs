@@ -68,8 +68,8 @@ impl ChessPiece {
 
 impl fmt::Display for ChessPiece {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        const WHITE_PIECE_REPR: &str = "KQBHRP";
-        const BLACK_PIECE_REPR: &str = "kqbhrp";
+        const WHITE_PIECE_REPR: &str = "KQBNRP";
+        const BLACK_PIECE_REPR: &str = "kqbnrp";
 
         write!(
             f,

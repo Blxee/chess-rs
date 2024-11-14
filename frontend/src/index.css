@@ -1,0 +1,76 @@
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/nunito-v26-latin-regular.woff2')
+    url('/fonts/nunito-v26-latin-700.woff2')  format('woff2'),
+    url('/fonts/Nunito-VariableFont_wght.ttf') format('truetype');
+}
+
+:root {
+  font-family: 'Nunito', Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  /* color: rgba(255, 255, 255, 0.87); */
+  /* background-color: #242424; */
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: center;
+  min-height: 100svh;
+  padding: 5vmin 0;
+  background-color: #F4DFC8;
+}
+
+button {
+  position: relative;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  top: 0;
+  border-radius: 0.6em;
+  border: 0.1em solid #526D82;
+  color: #DDE6ED;
+  text-shadow: 0.06em 0.06em 0px #526D82;
+  font-weight: 700;
+  padding: 0.6em 1.2em;
+  margin-bottom: 0.4em;
+  font-size: 1em;
+  font-weight: 700;
+  font-family: inherit;
+  background-color: #9DB2BF;
+  cursor: pointer;
+  box-shadow: 0px 0.4em 0px #526D82;
+  transition: all 250ms ease;
+}
+button:active {
+  top: 0.4em;
+  box-shadow: 0px 0px 0px #526D82 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #31304D;
+  }
+}
