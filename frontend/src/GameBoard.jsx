@@ -19,12 +19,16 @@ export default function GameBoard() {
 
   // Connect to the server using a WebSocket
   useEffect(() => {
-    const socketLink = `ws://${window.location.host}/ws/server-socket/`;
+    const socketLink = `ws://${window.location.host}/ws`;
     const socket = new WebSocket(socketLink);
+
+    socket.onopen = () => {
+      alert("connection successful!");
+    };
 
     socket.onmessage = event => {
       const data = JSON.parse(event.data);
-      console.log(data);
+      alert(data);
     }
     socket.onerror = err => { alert(err); };
   }, []);
