@@ -4,7 +4,7 @@ use std::ops::{Add, Sub};
 #[macro_export]
 macro_rules! cvec {
     ($col:expr, $row:expr) => {
-        ChessVec::new($col, $row)
+        crate::chess::ChessVec::new($col, $row)
     };
 }
 
