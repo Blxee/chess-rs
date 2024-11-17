@@ -8,7 +8,7 @@ macro_rules! cvec {
     };
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ChessVec {
     pub row: i32,
     pub col: i32,
@@ -30,7 +30,7 @@ impl TryFrom<&mut String> for ChessVec {
     type Error = &'static str;
 
     fn try_from(value: &mut String) -> Result<Self, Self::Error> {
-        const ROWS: &'static str = "12345678";
+        const ROWS: &'static str = "87654321";
         const COLS: &'static str = "abcdefgh";
 
         let Some(row_idx) = value.chars().position(|c| ROWS.contains(c)) else {

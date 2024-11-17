@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './GameBoard.css';
 import blackKing from '/icons/black-king.svg';
 import blackQueen from '/icons/black-queen.svg';
@@ -14,7 +14,25 @@ import whiteRook from '/icons/white-rook.svg';
 import whitePawn from '/icons/white-pawn.svg';
 
 
-// Chess board component
+const CHAR_PIECE_MAP = new Map([
+  ["k", blackKing],
+  ["q", blackQueen],
+  ["b", blackBishop],
+  ["n", blackKnight],
+  ["r", blackRook],
+  ["p", blackPawn],
+  ["K", whiteKing],
+  ["Q", whiteQueen],
+  ["B", whiteBishop],
+  ["N", whiteKnight],
+  ["R", whiteRook],
+  ["P", whitePawn],
+]);
+
+
+/**
+ * Represents the chess board and handles socket IO
+ */
 export default function GameBoard() {
 
   // Reference to the WebSocket connection
@@ -28,19 +46,33 @@ export default function GameBoard() {
     socketRef.current = socket;
 
     socket.onopen = () => {
-      alert("connection successful!");
+      console.log("connection successful!");
     };
 
     socket.onmessage = event => {
-      alert(event.data);
+      const board = event.data.split(" ")[0];
+
+      const grid = {};
+      for (let [y, row] of board.split("/").entries()) {
+        let x = 0;
+        for (let c of row.split("")) {
+          if (CHAR_PIECE_MAP.has(c)) {
+            grid[[(x++) + y * 8]] = CHAR_PIECE_MAP.get(c);
+          } else {
+            x += parseInt(c);
+          }
+        }
+      }
+
+      setGrid(grid);
     }
 
     socket.onclose = () => {
-      alert("connection closed");
+      console.log("connection closed");
     }
 
     socket.onerror = err => {
-      alert(err);
+      console.log(err);
     };
   }, []);
 
@@ -72,13 +104,21 @@ export default function GameBoard() {
     return obj;
   });
 
+  const onCellClicked = (x) => {
+    if (socketRef.current === null)
+      return;
+    const col = "abcdefgh"[x % 8];
+    const row = Math.floor(9 - x / 8).toString();
+    socketRef.current.send(`${col}${row}`);
+  };
+
   return (
     <>
       <div id='board'>
         {[...Array(8 * 8).keys()].map((x) => {
           return (
             <>
-              <div className='cell' key={x}>
+              <div className='cell' onClick={() => onCellClicked(x)} key={x}>
                 {grid[x] && <img src={grid[x]} />}
               </div>
               {x % 8 === 7 && <div className='cell' key={1} hidden></div>}

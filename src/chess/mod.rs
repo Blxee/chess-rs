@@ -49,25 +49,25 @@ impl ChessBoard {
     pub const fn new() -> Self {
         let mut grid = [const { [const { None }; WIDTH] }; HEIGHT];
 
-        grid[7][0] = Some(ChessPiece::new(ROOK, BLACK));
-        grid[7][1] = Some(ChessPiece::new(KNIGHT, BLACK));
-        grid[7][2] = Some(ChessPiece::new(BISHOP, BLACK));
-        grid[7][3] = Some(ChessPiece::new(QUEEN, BLACK));
-        grid[7][4] = Some(ChessPiece::new(KING, BLACK));
-        grid[7][5] = Some(ChessPiece::new(BISHOP, BLACK));
-        grid[7][6] = Some(ChessPiece::new(KNIGHT, BLACK));
-        grid[7][7] = Some(ChessPiece::new(ROOK, BLACK));
-        grid[6] = [const { Some(ChessPiece::new(PAWN, BLACK)) }; 8];
+        grid[0][0] = Some(ChessPiece::new(ROOK, BLACK));
+        grid[0][1] = Some(ChessPiece::new(KNIGHT, BLACK));
+        grid[0][2] = Some(ChessPiece::new(BISHOP, BLACK));
+        grid[0][3] = Some(ChessPiece::new(QUEEN, BLACK));
+        grid[0][4] = Some(ChessPiece::new(KING, BLACK));
+        grid[0][5] = Some(ChessPiece::new(BISHOP, BLACK));
+        grid[0][6] = Some(ChessPiece::new(KNIGHT, BLACK));
+        grid[0][7] = Some(ChessPiece::new(ROOK, BLACK));
+        grid[1] = [const { Some(ChessPiece::new(PAWN, BLACK)) }; 8];
 
-        grid[1] = [const { Some(ChessPiece::new(PAWN, WHITE)) }; 8];
-        grid[0][0] = Some(ChessPiece::new(ROOK, WHITE));
-        grid[0][1] = Some(ChessPiece::new(KNIGHT, WHITE));
-        grid[0][2] = Some(ChessPiece::new(BISHOP, WHITE));
-        grid[0][3] = Some(ChessPiece::new(QUEEN, WHITE));
-        grid[0][4] = Some(ChessPiece::new(KING, WHITE));
-        grid[0][5] = Some(ChessPiece::new(BISHOP, WHITE));
-        grid[0][6] = Some(ChessPiece::new(KNIGHT, WHITE));
-        grid[0][7] = Some(ChessPiece::new(ROOK, WHITE));
+        grid[6] = [const { Some(ChessPiece::new(PAWN, WHITE)) }; 8];
+        grid[7][0] = Some(ChessPiece::new(ROOK, WHITE));
+        grid[7][1] = Some(ChessPiece::new(KNIGHT, WHITE));
+        grid[7][2] = Some(ChessPiece::new(BISHOP, WHITE));
+        grid[7][3] = Some(ChessPiece::new(QUEEN, WHITE));
+        grid[7][4] = Some(ChessPiece::new(KING, WHITE));
+        grid[7][5] = Some(ChessPiece::new(BISHOP, WHITE));
+        grid[7][6] = Some(ChessPiece::new(KNIGHT, WHITE));
+        grid[7][7] = Some(ChessPiece::new(ROOK, WHITE));
 
         Self {
             grid,
@@ -80,7 +80,7 @@ impl ChessBoard {
 
     pub fn to_fen(&self) -> String {
         let mut result = String::new();
-        for row in self.grid.iter().rev() {
+        for row in self.grid.iter() {
             let spaces = row.iter().fold(0, |mut spaces, i| {
                 match i {
                     Some(piece) => {
@@ -166,7 +166,7 @@ impl ChessBoard {
         });
 
         self.swap_turn();
-        self.deselect_piece()?;
+        self.selected_pos = None;
 
         Ok(())
     }
@@ -204,7 +204,7 @@ impl ChessBoard {
             Promoting(to_type) => todo!(),
         }
 
-        self.deselect_piece()?;
+        self.selected_pos = None;
 
         Ok(())
     }
@@ -215,7 +215,7 @@ impl fmt::Display for ChessBoard {
         writeln!(f, "   a b c d e f g h")?;
         writeln!(f, "  +---------------+")?;
 
-        for (y, row) in self.grid.iter().rev().enumerate() {
+        for (y, row) in self.grid.iter().enumerate() {
             write!(f, "{} ", (HEIGHT - y))?;
             for (x, cell) in row.iter().enumerate() {
                 let is_selected = self
