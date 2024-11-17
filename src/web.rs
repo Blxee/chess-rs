@@ -8,17 +8,21 @@ use axum::{
     Router,
 };
 use serde_json::json;
-use std::{net::SocketAddr, sync::Arc, time::Duration};
-use tokio::{sync::Mutex, time::sleep};
+use std::{
+    net::SocketAddr,
+    sync::{Arc, RwLock},
+    time::Duration,
+};
+use tokio::{sync::Notify, time::sleep};
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
-use crate::chess::{ChessBoard, ChessVec};
+use crate::chess::{ChessBoard, ChessColor, ChessVec};
 use crate::cvec;
 
 /// Stores ongoing matches
 #[derive(Clone)]
 struct AppState {
-    chess_game: Arc<Mutex<ChessBoard>>,
+    chess_game: Arc<(RwLock<ChessBoard>, Notify)>,
 }
 
 pub async fn start_web_server() {
@@ -28,7 +32,7 @@ pub async fn start_web_server() {
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
 
     let app_state = AppState {
-        chess_game: Arc::new(Mutex::new(ChessBoard::new())),
+        chess_game: Arc::new((RwLock::new(ChessBoard::new()), Notify::new())),
     };
 
     let app = Router::new()
@@ -45,27 +49,53 @@ pub async fn start_web_server() {
 
 async fn ws_handler(
     ws: WebSocketUpgrade,
-    State(AppState { chess_game }): State<AppState>,
+    State(AppState { chess_game: pair }): State<AppState>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_socket(socket, Arc::clone(&chess_game)))
+    let color = {
+        let mut board = pair.0.write().unwrap();
+        board.swap_turn();
+        board.get_turn()
+    };
+    ws.on_upgrade(move |socket| handle_socket(socket, Arc::clone(&pair), color))
 }
 
-async fn handle_socket(mut socket: WebSocket, board: Arc<Mutex<ChessBoard>>) {
+async fn handle_socket(
+    mut socket: WebSocket,
+    pair: Arc<(RwLock<ChessBoard>, Notify)>,
+    color: ChessColor,
+) {
     println!("connected");
+    let (lock, notice) = &*pair;
 
     loop {
-        let mut board = board.lock().await;
+        let (fen, turn) = {
+            let board = lock.read().unwrap();
+            (board.to_fen(), board.get_turn())
+        };
+        socket.send(fen.into()).await.unwrap();
 
-        socket.send(board.to_fen().into()).await.unwrap();
+        if turn != color {
+            notice.notified().await;
+        }
         if let Some(Ok(msg)) = socket.recv().await {
             let mut msg = msg.to_text().unwrap().to_owned();
 
             println!("{msg}");
 
+            let mut board = lock.write().unwrap();
+
             if board.is_piece_selected() {
-                board.move_selected(ChessVec::try_from(&mut msg).unwrap()).map_err(|e| println!("{e}"));
+                board
+                    .move_selected(ChessVec::try_from(&mut msg).unwrap())
+                    .map_err(|e| println!("{e}"));
             } else {
-                board.select_piece(ChessVec::try_from(&mut msg).unwrap()).map_err(|e| println!("{e}"));
+                board
+                    .select_piece(ChessVec::try_from(&mut msg).unwrap())
+                    .map_err(|e| println!("{e}"));
+            }
+
+            if turn != color {
+                notice.notify_one();
             }
         }
     }

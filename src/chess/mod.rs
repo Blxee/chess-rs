@@ -107,7 +107,11 @@ impl ChessBoard {
         return (self[king_pos].as_ref().unwrap(), king_pos);
     }
 
-    fn swap_turn(&mut self) {
+    pub fn get_turn(&self) -> ChessColor {
+        self.turn
+    }
+
+    pub fn swap_turn(&mut self) {
         self.turn = match self.turn {
             WHITE => BLACK,
             BLACK => WHITE,
