@@ -13,7 +13,10 @@ use std::{
     sync::{Arc, RwLock},
     time::Duration,
 };
-use tokio::{sync::Notify, time::sleep};
+use tokio::{
+    sync::{Notify, RwLock},
+    time::sleep,
+};
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
 use crate::chess::{ChessBoard, ChessColor, ChessVec};
@@ -22,7 +25,28 @@ use crate::cvec;
 /// Stores ongoing matches
 #[derive(Clone)]
 struct AppState {
-    chess_game: Arc<(RwLock<ChessBoard>, Notify)>,
+    games: Vec<Arc<ChessGame>>,
+}
+
+/// 
+struct ChessGame {
+    state: Cell<GameState>,
+    board: RwLock<ChessBoard>,
+    notify: Notify,
+}
+
+/// Represets the current game state
+///
+/// **Starting**: when one player is waiting for another opponent.
+/// **Ongoing**: the game is currently being played.
+/// **Halted**: game has started but both players are not connected.
+/// **Finished**: the game has already finished.
+///
+enum GameState {
+    Starting,
+    Ongoing,
+    Halted,
+    Finished,
 }
 
 pub async fn start_web_server() {
@@ -31,9 +55,7 @@ pub async fn start_web_server() {
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
 
-    let app_state = AppState {
-        chess_game: Arc::new((RwLock::new(ChessBoard::new()), Notify::new())),
-    };
+    let app_state = AppState { games: Vec::new() };
 
     let app = Router::new()
         .route("/ws", any(ws_handler))
@@ -49,19 +71,22 @@ pub async fn start_web_server() {
 
 async fn ws_handler(
     ws: WebSocketUpgrade,
-    State(AppState { chess_game: pair }): State<AppState>,
+    State(AppState { games }): State<AppState>,
 ) -> impl IntoResponse {
     let color = {
         let mut board = pair.0.write().unwrap();
         board.swap_turn();
         board.get_turn()
     };
+
+    for game in games.iter_mut() {
+    }
     ws.on_upgrade(move |socket| handle_socket(socket, Arc::clone(&pair), color))
 }
 
 async fn handle_socket(
     mut socket: WebSocket,
-    pair: Arc<(RwLock<ChessBoard>, Notify)>,
+    game,
     color: ChessColor,
 ) {
     println!("connected");
