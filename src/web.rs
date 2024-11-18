@@ -28,7 +28,7 @@ struct AppState {
     games: Vec<Arc<ChessGame>>,
 }
 
-/// 
+///
 struct ChessGame {
     state: Cell<GameState>,
     board: RwLock<ChessBoard>,
@@ -41,12 +41,11 @@ struct ChessGame {
 /// **Ongoing**: the game is currently being played.
 /// **Halted**: game has started but both players are not connected.
 /// **Finished**: the game has already finished.
-///
+#[derive(Clone, Copy)]
 enum GameState {
-    Starting,
+    Empty,
+    Waiting { color_taken: i32 },
     Ongoing,
-    Halted,
-    Finished,
 }
 
 pub async fn start_web_server() {
@@ -73,41 +72,52 @@ async fn ws_handler(
     ws: WebSocketUpgrade,
     State(AppState { games }): State<AppState>,
 ) -> impl IntoResponse {
-    let color = {
-        let mut board = pair.0.write().unwrap();
-        board.swap_turn();
-        board.get_turn()
-    };
+    let game;
 
-    for game in games.iter_mut() {
+    if games.is_empty()
+        || games
+            .iter()
+            .all(|game| matches!(game.state, GameState::Ongoing))
+    {
+        game = ChessGame {
+            state: GameState::Empty,
+            board: ChessBoard::new(),
+            notify: Notify::new(),
+        };
+        games.push(Arc::new(game));
+    } else {
+        game = games
+            .iter()
+            .find(|game| !matches!(game.state, GameState::Ongoing))
+            .unwrap();
     }
-    ws.on_upgrade(move |socket| handle_socket(socket, Arc::clone(&pair), color))
+
+    ws.on_upgrade(move |socket| handle_socket(socket, Arc::clone(&game), color))
 }
 
 async fn handle_socket(
     mut socket: WebSocket,
-    game,
+    ChessGame { board, notify, .. }: ChessGame,
     color: ChessColor,
 ) {
     println!("connected");
-    let (lock, notice) = &*pair;
 
     loop {
         let (fen, turn) = {
-            let board = lock.read().unwrap();
+            let board = board.read().unwrap();
             (board.to_fen(), board.get_turn())
         };
         socket.send(fen.into()).await.unwrap();
 
         if turn != color {
-            notice.notified().await;
+            notify.notified().await;
         }
         if let Some(Ok(msg)) = socket.recv().await {
             let mut msg = msg.to_text().unwrap().to_owned();
 
             println!("{msg}");
 
-            let mut board = lock.write().unwrap();
+            let mut board = board.write().unwrap();
 
             if board.is_piece_selected() {
                 board
@@ -120,7 +130,7 @@ async fn handle_socket(
             }
 
             if turn != color {
-                notice.notify_one();
+                notify.notify_one();
             }
         }
     }
