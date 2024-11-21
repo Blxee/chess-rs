@@ -80,6 +80,7 @@ impl ChessBoard {
 
     pub fn to_fen(&self) -> String {
         let mut result = String::new();
+        // add board state
         for row in self.grid.iter() {
             let spaces = row.iter().fold(0, |mut spaces, i| {
                 match i {
@@ -99,6 +100,8 @@ impl ChessBoard {
             }
             result.push('/');
         }
+        // add current turn
+        write!(result, " {}", ['w', 'b'][self.turn as usize]).unwrap();
         return result;
     }
 
@@ -118,7 +121,7 @@ impl ChessBoard {
         };
     }
 
-    pub fn select_piece(&mut self, pos: ChessVec) -> Result<(), &str> {
+    pub fn select_piece(&mut self, pos: ChessVec) -> Result<(), &'static str> {
         match &self[pos] {
             Some(piece) if piece.color != self.turn => {
                 Err("[Warning]: this is not your piece to select")
@@ -135,7 +138,7 @@ impl ChessBoard {
         self.selected_pos.is_some()
     }
 
-    pub fn deselect_piece(&mut self) -> Result<(), &str> {
+    pub fn deselect_piece(&mut self) -> Result<(), &'static str> {
         if self.selected_pos.is_none() {
             Err("[Warning]: no piece was selected")
         } else {
@@ -144,7 +147,7 @@ impl ChessBoard {
         }
     }
 
-    pub fn move_piece(&mut self, from: ChessVec, to: ChessVec) -> Result<(), &str> {
+    pub fn move_piece(&mut self, from: ChessVec, to: ChessVec) -> Result<(), &'static str> {
         match &self[from] {
             Some(piece) if piece.color != self.turn => {
                 return Err("[Warning]: this is not your piece to move");
@@ -175,14 +178,14 @@ impl ChessBoard {
         Ok(())
     }
 
-    pub fn move_selected(&mut self, to: ChessVec) -> Result<(), &str> {
+    pub fn move_selected(&mut self, to: ChessVec) -> Result<(), &'static str> {
         let Some(selected_pos) = self.selected_pos else {
             return Err("[Warning]: no piece is selected to move");
         };
         self.move_piece(selected_pos, to)
     }
 
-    pub fn undo_move(&mut self) -> Result<(), &str> {
+    pub fn undo_move(&mut self) -> Result<(), &'static str> {
         let Some(ChessMove {
             from,
             to,

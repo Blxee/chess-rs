@@ -50,7 +50,13 @@ export default function GameBoard() {
     };
 
     socket.onmessage = event => {
-      const board = event.data.split(" ")[0];
+      const { result, message } = JSON.parse(event.data);
+      if (result === "error") {
+        alert(message);
+        return;
+      }
+
+      const [board, turn] = message.split(" ");
 
       const grid = {};
       for (let [y, row] of board.split("/").entries()) {
@@ -65,6 +71,7 @@ export default function GameBoard() {
       }
 
       setGrid(grid);
+      setTurn(turn);
     }
 
     socket.onclose = () => {
@@ -75,6 +82,8 @@ export default function GameBoard() {
       console.log(err);
     };
   }, []);
+
+  const [turn, setTurn] = useState('w');
 
   // Initialize the chess grid with the default layout
   const [grid, setGrid] = useState(() => {
@@ -108,12 +117,13 @@ export default function GameBoard() {
     if (socketRef.current === null)
       return;
     const col = "abcdefgh"[x % 8];
-    const row = Math.floor(9 - x / 8).toString();
+    const row = 8 - Math.floor(x / 8);
     socketRef.current.send(`${col}${row}`);
   };
 
   return (
     <>
+      <h1>{"turn: " + turn}</h1>
       <div id='board'>
         {[...Array(8 * 8).keys()].map((x) => {
           return (

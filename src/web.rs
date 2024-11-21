@@ -5,13 +5,11 @@ use axum::{
     },
     response::IntoResponse,
     routing::any,
-    Router,
+    Json, Router,
 };
 use serde_json::json;
 use std::{
-    net::SocketAddr,
-    sync::{Arc, RwLock},
-    time::Duration,
+    cell::Cell, net::SocketAddr, sync::{Arc, RwLock}, time::Duration
 };
 use tokio::{sync::Notify, time::sleep};
 use tower_http::{services::ServeDir, trace::TraceLayer};
@@ -23,6 +21,7 @@ use crate::cvec;
 #[derive(Clone)]
 struct AppState {
     chess_game: Arc<(RwLock<ChessBoard>, Notify)>,
+    is_game_empty: Arc<RwLock<bool>>,
 }
 
 pub async fn start_web_server() {
@@ -33,6 +32,7 @@ pub async fn start_web_server() {
 
     let app_state = AppState {
         chess_game: Arc::new((RwLock::new(ChessBoard::new()), Notify::new())),
+        is_game_empty: Arc::new(RwLock::new(true)),
     };
 
     let app = Router::new()
@@ -49,12 +49,20 @@ pub async fn start_web_server() {
 
 async fn ws_handler(
     ws: WebSocketUpgrade,
-    State(AppState { chess_game: pair }): State<AppState>,
+    State(AppState { chess_game: pair, is_game_empty }): State<AppState>,
 ) -> impl IntoResponse {
-    let color = {
-        let mut board = pair.0.write().unwrap();
-        board.swap_turn();
-        board.get_turn()
+    // let color = {
+    //     let mut board = pair.0.write().unwrap();
+    //     let turn = board.get_turn();
+    //     board.swap_turn();
+    //     turn
+    // };
+    let mut is_game_empty = is_game_empty.write().unwrap();
+    let color = if *is_game_empty {
+        *is_game_empty = false;
+        ChessColor::WHITE
+    } else {
+        ChessColor::BLACK
     };
     ws.on_upgrade(move |socket| handle_socket(socket, Arc::clone(&pair), color))
 }
@@ -64,38 +72,55 @@ async fn handle_socket(
     pair: Arc<(RwLock<ChessBoard>, Notify)>,
     color: ChessColor,
 ) {
-    println!("connected");
+    println!("{} connectef", ["white", "black"][color as usize]);
     let (lock, notice) = &*pair;
 
     loop {
         let (fen, turn) = {
             let board = lock.read().unwrap();
+            println!("{board}");
             (board.to_fen(), board.get_turn())
         };
-        socket.send(fen.into()).await.unwrap();
+        socket
+            .send(
+                json!({"result": "success", "message": fen})
+                    .to_string()
+                    .into(),
+            )
+            .await
+            .unwrap();
 
         if turn != color {
+            println!("{} waiting", ["white", "black"][color as usize]);
             notice.notified().await;
         }
+
         if let Some(Ok(msg)) = socket.recv().await {
             let mut msg = msg.to_text().unwrap().to_owned();
 
             println!("{msg}");
 
-            let mut board = lock.write().unwrap();
+            let move_result = {
+                let mut board = lock.write().unwrap();
 
-            if board.is_piece_selected() {
-                board
-                    .move_selected(ChessVec::try_from(&mut msg).unwrap())
-                    .map_err(|e| println!("{e}"));
-            } else {
-                board
-                    .select_piece(ChessVec::try_from(&mut msg).unwrap())
-                    .map_err(|e| println!("{e}"));
-            }
+                if board.is_piece_selected() {
+                    board.move_selected(ChessVec::try_from(&mut msg).unwrap())
+                } else {
+                    board.select_piece(ChessVec::try_from(&mut msg).unwrap())
+                }
+            };
 
-            if turn != color {
-                notice.notify_one();
+            match move_result {
+                Ok(_) => {
+                    println!("{} took action", ["white", "black"][color as usize]);
+                    notice.notify_waiters()
+                }
+                Err(e) => {
+                    println!("{e}");
+                    socket
+                        .send(json!({"result": "error", "message": e}).to_string().into())
+                        .await;
+                }
             }
         }
     }
