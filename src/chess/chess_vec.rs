@@ -1,11 +1,14 @@
 use std::ops::{Add, Sub};
 
-
 #[macro_export]
 macro_rules! cvec {
     ($col:expr, $row:expr) => {
         crate::chess::ChessVec::new($col, $row)
     };
+    ($pos: literal) => {{
+        let mut str = $pos.to_string();
+        crate::chess::ChessVec::try_from(&mut str).unwrap()
+    }};
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

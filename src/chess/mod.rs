@@ -100,6 +100,7 @@ impl ChessBoard {
             }
             result.push('/');
         }
+        let _ = result.pop();
         // add current turn
         write!(result, " {}", ['w', 'b'][self.turn as usize]).unwrap();
         return result;
@@ -256,3 +257,6 @@ impl IndexMut<ChessVec> for ChessBoard {
         &mut self.grid[row as usize][col as usize]
     }
 }
+
+#[cfg(test)]
+mod test_chess;

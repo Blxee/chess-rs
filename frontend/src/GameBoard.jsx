@@ -130,6 +130,9 @@ export default function GameBoard() {
             <>
               <div className='cell' onClick={() => onCellClicked(x)} key={x}>
                 {grid[x] && <img src={grid[x]} />}
+                <p style={{position: "absolute"}}>{
+                  `${"abcdefgh"[x % 8]}${8 - Math.floor(x / 8)}`
+                }</p>
               </div>
               {x % 8 === 7 && <div className='cell' key={1} hidden></div>}
             </>
