@@ -1,32 +1,26 @@
 import { useEffect, useState } from 'react';
 import './App.css';
 import GameBoard from './GameBoard'
+import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom';
+import Home from './pages/Home';
 
 
 // Main app conponent
 export default function App() {
 
-  const joinRandom = () => {
-    setTimeout(() => setContent(<GameBoard />), 250);
-  };
-
-  const joinMatch = () => {
-    setTimeout(() => setContent(<GameBoard />), 250);
-  };
-
-  const [content, setContent] = useState(
-    <>
-      <button onClick={joinRandom}>Join Random</button>
-      <button onClick={joinMatch}>Join Match</button>
-      {/* <div id='search-bar'> */}
-      {/*   <input type='search' placeholder='please enter match id!'/> */}
-      {/* </div> */}
-    </>
-  );
 
   return (
-    <>
-      {content}
-    </>
-  )
+    <BrowserRouter>
+      <Routes>
+
+        <Route path='/' element={<Home />} />
+
+        <Route path='random' element={<GameBoard />} />
+
+        <Route path='join' element={<GameBoard />} />
+
+      </Routes>
+    </BrowserRouter>
+  );
+
 }
