@@ -72,13 +72,13 @@ async fn handle_socket(
     pair: Arc<(RwLock<ChessBoard>, Notify)>,
     color: ChessColor,
 ) {
-    println!("{} connectef", ["white", "black"][color as usize]);
+    tracing::info!("{} connected..", ["white", "black"][color as usize]);
     let (lock, notice) = &*pair;
 
     loop {
         let (fen, turn) = {
             let board = lock.read().unwrap();
-            println!("{board}");
+            tracing::info!("\n{board}");
             (board.to_fen(), board.get_turn())
         };
         socket
@@ -91,14 +91,14 @@ async fn handle_socket(
             .unwrap();
 
         if turn != color {
-            println!("{} waiting", ["white", "black"][color as usize]);
+            tracing::info!("{} waiting..", ["white", "black"][color as usize]);
             notice.notified().await;
         }
 
         if let Some(Ok(msg)) = socket.recv().await {
             let mut msg = msg.to_text().unwrap().to_owned();
 
-            println!("{msg}");
+            tracing::info!("{msg}");
 
             let move_result = {
                 let mut board = lock.write().unwrap();
@@ -112,11 +112,11 @@ async fn handle_socket(
 
             match move_result {
                 Ok(_) => {
-                    println!("{} took action", ["white", "black"][color as usize]);
+                    tracing::info!("{} took action", ["white", "black"][color as usize]);
                     notice.notify_waiters()
                 }
                 Err(e) => {
-                    println!("{e}");
+                    tracing::info!("{e}");
                     socket
                         .send(json!({"result": "error", "message": e}).to_string().into())
                         .await;
