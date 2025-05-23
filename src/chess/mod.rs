@@ -20,6 +20,7 @@ pub struct ChessBoard {
     turn: ChessColor,
     move_stack: Vec<ChessMove>,
     kings_pos: [ChessVec; 2],
+    pawn_direction : [i32; 2],
     selected_pos: Option<ChessVec>,
 }
 
@@ -69,11 +70,16 @@ impl ChessBoard {
         grid[7][6] = Some(ChessPiece::new(KNIGHT, WHITE));
         grid[7][7] = Some(ChessPiece::new(ROOK, WHITE));
 
+        let mut pawn_direction = [0; 2];
+        pawn_direction[WHITE as usize] = -1;
+        pawn_direction[BLACK as usize] = 1;
+
         Self {
             grid,
             turn: ChessColor::WHITE,
             move_stack: Vec::new(),
             kings_pos: [cvec!(4, 7), cvec!(4, 0)],
+            pawn_direction,
             selected_pos: None,
         }
     }

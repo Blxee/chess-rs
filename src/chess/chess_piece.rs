@@ -39,30 +39,35 @@ impl ChessPiece {
 
     fn is_king_move_valid(&self, board: &ChessBoard, from: ChessVec, to: ChessVec) -> bool {
         let diff = (from - to).abs();
-        if diff.row > 1 || diff.col > 1 {
-            return false;
-        }
-        true
+        return diff.row <= 1 && diff.col <= 1;
     }
 
     fn is_queen_move_valid(&self, board: &ChessBoard, from: ChessVec, to: ChessVec) -> bool {
-        todo!()
+        let diff = (from - to).abs();
+        return diff.row == 0 || diff.col == 0 || diff.row == diff.col;
     }
 
     fn is_bishop_move_valid(&self, board: &ChessBoard, from: ChessVec, to: ChessVec) -> bool {
-        todo!()
+        let diff = (from - to).abs();
+        return diff.row == diff.col;
     }
 
     fn is_knight_move_valid(&self, board: &ChessBoard, from: ChessVec, to: ChessVec) -> bool {
-        todo!()
+        let diff = (from - to).abs();
+        return (diff.row == 1 && diff.col == 2) || (diff.row == 2 && diff.col == 1);
     }
 
     fn is_rook_move_valid(&self, board: &ChessBoard, from: ChessVec, to: ChessVec) -> bool {
-        todo!()
+        let diff = (from - to).abs();
+        return diff.row == 0 || diff.col == 0;
     }
 
     fn is_pawn_move_valid(&self, board: &ChessBoard, from: ChessVec, to: ChessVec) -> bool {
-        todo!()
+        // pawn shouldn't be able to take pieces in front of it!!!
+        let diff = (from - to).abs();
+        let direction = board.pawn_direction[self.color as usize];
+        let max_distance = if self.total_moves == 0 { 2 } else { 1 };
+        return diff.col <= max_distance * direction;
     }
 }
 

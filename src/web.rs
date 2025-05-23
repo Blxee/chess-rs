@@ -9,10 +9,13 @@ use axum::{
 };
 use serde_json::json;
 use std::{
-    cell::Cell, net::SocketAddr, sync::{Arc, RwLock}, time::Duration
+    cell::Cell,
+    net::SocketAddr,
+    sync::{Arc, RwLock},
+    time::Duration,
 };
-use tokio::{sync::Notify, time::sleep};
-use tower_http::{services::ServeDir, trace::TraceLayer};
+use tokio::{select, sync::Notify, time::sleep};
+use tower_http::{services::{ServeDir, ServeFile}, trace::TraceLayer};
 
 use crate::chess::{ChessBoard, ChessColor, ChessVec};
 use crate::cvec;
@@ -49,7 +52,10 @@ pub async fn start_web_server() {
 
 async fn ws_handler(
     ws: WebSocketUpgrade,
-    State(AppState { chess_game: pair, is_game_empty }): State<AppState>,
+    State(AppState {
+        chess_game: pair,
+        is_game_empty,
+    }): State<AppState>,
 ) -> impl IntoResponse {
     // let color = {
     //     let mut board = pair.0.write().unwrap();
@@ -90,9 +96,12 @@ async fn handle_socket(
             .await
             .unwrap();
 
-        if turn != color {
+        while turn != color {
             tracing::info!("{} waiting..", ["white", "black"][color as usize]);
-            notice.notified().await;
+            select! {
+                _ = notice.notified() => (),
+                _ = async { loop { socket.recv().await; } } => (),
+            }
         }
 
         if let Some(Ok(msg)) = socket.recv().await {

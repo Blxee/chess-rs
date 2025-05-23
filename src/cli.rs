@@ -45,13 +45,10 @@ fn get_input() -> ChessInput {
 }
 
 pub fn start_cli_game() {
-    println!("Hello, world!");
-
     let mut board = ChessBoard::new();
 
     loop {
         println!("{board}");
-        println!("{}", board.to_fen());
 
         while let Err(e) = match get_input() {
             ChessInput::Move(from, to) => board.move_piece(from, to),
